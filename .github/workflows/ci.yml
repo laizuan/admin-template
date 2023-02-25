@@ -45,5 +45,5 @@ jobs:
       - name: Build the Docker image
         run: |
           docker version
-          docker build -t registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
+          docker build registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest .
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
