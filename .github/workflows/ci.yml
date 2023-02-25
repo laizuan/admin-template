@@ -38,8 +38,8 @@ jobs:
         with:
           login-server: registry.cn-shenzhen.aliyuncs.com
           region-id: cn-shenzhen
-          username:"${{ secrets.USERMAME }}"
-          password:"${{ secrets.PASSWORD }}"
+          username: "${{ secrets.USERMAME }}"
+          password: "${{ secrets.PASSWORD }}"
 
       # 上传打包资源
       - name: Build the Docker image
