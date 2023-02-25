@@ -38,5 +38,4 @@ jobs:
           docker version
           docker login --username=${{ secrets.USERMAME }} --password=${{ secrets.PASSWORD }} registry.cn-shenzhen.aliyuncs.com
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
-          # 推送镜像到镜像仓库
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
