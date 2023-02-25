@@ -33,7 +33,7 @@ jobs:
         run: pnpm build
 
 
-      - name: LogintoAliyunContainerRegistry(ACR)
+      - name: Login Aliyun Container Registry
         uses: aliyun/acr-login@v1
         with:
           login-server: registry.cn-shenzhen.aliyuncs.com
