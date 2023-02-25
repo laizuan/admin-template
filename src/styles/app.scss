@@ -1,0 +1,221 @@
+:root {
+  --next-menu-bg-color:#fff;
+}
+
+body {
+  --el-menu-item-height:46px;
+
+  height:100%;
+  font-size:14px;
+  background-color:var(--el-bg-color-page);
+}
+
+#app {
+  height:100%;
+}
+
+#nprogress .bar {
+  background-color:var(--el-color-primary) !important;
+}
+
+.el-switch__core {
+  width:48px !important;
+}
+
+$dark-menu-main-color: #191a23;
+$dark-menu-sound-color: #101117;
+$dark-menu-text-color: #babbbd;
+$dark-menu-text-color-white: #fff;
+
+// 分栏菜单样式开始
+
+.lcr .label-item-wrapper.vaw-tab-split-item-is-active {
+  color:$dark-menu-text-color-white !important;
+  background-color:var(--el-menu-active-color);
+  border-radius:4px;
+}
+
+.dark-side.lcr {
+  .vaw-tab-split-side-bar-wrapper .label-item-wrapper {
+    color:$dark-menu-text-color;
+    cursor:pointer;
+
+    &:hover {
+      color:$dark-menu-text-color-white !important;
+    }
+  }
+
+  .tab-split-tab-wrapper .scrollbar {
+    padding-top:4px;
+    background-color:$dark-menu-main-color !important;
+  }
+
+  .tab-split-menu-wrapper .scrollbar {
+    padding-top:4px;
+    background-color:$dark-menu-sound-color;
+
+    .el-menu {
+      background-color:$dark-menu-sound-color;
+    }
+  }
+}
+
+html.dark .lcr {
+  .logo-wrapper,
+  .tab-split-tab-wrapper .scrollbar {
+    background-color:var(--next-menu-bg-color) !important;
+  }
+
+  .tab-split-menu-wrapper .scrollbar,
+  .tab-split-menu-wrapper .scrollbar .el-menu {
+    background-color:#181818 !important;
+  }
+
+  .el-menu-item.is-active {
+    color:$dark-menu-text-color-white;
+    background-color:var(--el-color-primary);
+  }
+}
+
+// 经典菜单样式开始
+html.dark .ltr {
+  .el-menu-item.is-active {
+    color:$dark-menu-text-color-white !important;
+    background-color:var(--el-color-primary) !important;
+  }
+
+  .el-sub-menu.is-active .el-sub-menu__title {
+    color:$dark-menu-text-color-white;
+  }
+}
+
+.ltr {
+  .el-sub-menu.is-opened .el-menu {
+    border-right:2px solid var(--el-color-primary) !important;
+  }
+
+  .el-sub-menu .el-menu-item {
+    min-width:178px !important;
+  }
+}
+
+.dark-side.ltr,
+.dark-side.lcr,
+.dark-side.ttb {
+  .el-menu,
+  .vaw-side-bar-wrapper .scrollbar {
+    background-color:$dark-menu-main-color;
+  }
+
+  .el-menu-item.is-active {
+    color:var(--el-color-white);
+    background-color:var(--el-color-primary);
+  }
+
+  .is-opened .el-menu {
+    background-color:$dark-menu-sound-color;
+  }
+
+  .el-sub-menu .el-sub-menu__title,
+  .el-menu-item {
+    color:$dark-menu-text-color;
+
+    &:hover:not(.is-active) {
+      color:$dark-menu-text-color-white;
+      background-color:transparent;
+    }
+
+    &.is-active {
+      color:$dark-menu-text-color-white !important;
+    }
+  }
+
+  .is-active .el-sub-menu__title {
+    color:$dark-menu-text-color-white;
+  }
+
+  .logo-wrapper {
+    color:#ddd;
+    background-color:$dark-menu-main-color;
+  }
+
+  .el-menu--collapse .el-sub-menu.is-active .el-sub-menu__title {
+    color:$dark-menu-text-color-white;
+    background-color:var(--el-menu-active-color);
+    border-radius:4px;
+  }
+}
+
+// 顶部菜单样式开始
+.el-popper .el-menu--horizontal,
+html.dark .ttb {
+  .el-menu-item.is-active,
+  .el-sub-menu.is-active .el-sub-menu__title {
+    color:$dark-menu-text-color-white !important;
+    background-color:var(--el-color-primary) !important;
+  }
+
+  .el-menu--horizontal .el-menu-item:not(.is-active):focus {
+    color:#ddd;
+    background-color:$dark-menu-main-color;
+  }
+}
+
+.light.ttb {
+  .el-sub-menu .el-sub-menu__title:hover {
+    background-color:var(--el-menu-hover-bg-color) !important;
+  }
+
+  .el-sub-menu.is-active .el-sub-menu__title {
+    background-color:var(--el-color-primary-light-8);
+  }
+
+  .el-menu--horizontal .el-menu-item:not(.is-active):focus {
+    color:var(--el-menu-text-color);
+    background-color:$dark-menu-text-color-white;
+  }
+}
+
+.dark-side.ttb {
+  .el-menu--horizontal .el-menu-item:not(.is-active):focus {
+    color:#ddd;
+    background-color:$dark-menu-main-color !important;
+  }
+
+  .dark {
+    .is-active .el-sub-menu__title {
+      color:$dark-menu-text-color-white;
+      background-color:var(--el-menu-active-color);
+
+      &:hover {
+        background-color:var(--el-menu-active-color);
+        opacity:0.9;
+      }
+    }
+
+    .el-menu-item:hover {
+      color:$dark-menu-text-color-white;
+      background-color:transparent;
+    }
+
+    .el-menu--horizontal .el-menu-item:not(.is-disabled):focus {
+      background-color:var(--el-menu-active-color);
+    }
+
+    .right-wrapper {
+      background-color:$dark-menu-main-color;
+    }
+
+    .action-items-wrapper {
+      color:$dark-menu-text-color;
+
+      .action-item:hover .n-svg-icon {
+        color:$dark-menu-text-color-white;
+      }
+
+      .nick-name {
+        color:$dark-menu-text-color;
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "extends": "@antfu",
+  "rules": {
+    "sort-imports": "off",
+    "no-console": "off"
+  }
+}

@@ -1,0 +1,10 @@
+@use './index.scss' as *;
+
+/* 页面宽度小于576px
+------------------------------- */
+@media screen and (max-width: $xs) {
+  // MessageBox 弹框
+  .el-message-box {
+    width: 80% !important;
+  }
+}

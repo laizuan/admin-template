@@ -1,0 +1,37 @@
+name: Deploy Build Upm web docker image
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code 😀
+        uses: actions/checkout@master
+        with:
+          ref: master
+
+      - name: Setup node18 👀
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          always-auth: true
+
+      # 装依赖
+      - name: Install dependencies 🔧
+        run: pnpm i
+
+      # 打包
+      - name: Build website 🤓
+        run: pnpm build
+
+      # 上传打包资源
+      - name: Build the Docker image
+        run: |
+          docker version
+          docker login --username=${{ secrets.USERMAME }} --password=${{ secrets.PASSWORD }} registry.cn-shenzhen.aliyuncs.com
+          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
+          # 推送镜像到镜像仓库
+          docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest

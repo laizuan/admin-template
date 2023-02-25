@@ -1,0 +1,470 @@
+<script setup lang="ts" name="UploadFile">
+import { forEach, merge } from 'lodash-es'
+import SparkMD5 from 'spark-md5'
+import { Delete, Plus } from '@element-plus/icons-vue'
+import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
+import { ElProgress } from 'element-plus'
+import { errorMessage, request, successMessage } from 'element-next'
+import { ref } from 'vue'
+import type { AxiosRequestConfig } from 'axios'
+import Axios from 'axios'
+import { getToken } from '@/utils/auth'
+import type { SysAttachmentChunk } from '@/api/sys/attachment'
+import {
+  fetchCreateChunk,
+  fetchMergeChunk,
+  fetchUpdateChunkStateSuccess,
+} from '@/api/sys/attachment'
+
+import { isNotNull } from '@/utils'
+interface WaitUpload {
+  file: File
+  url: string
+  id: string
+  chunkNum: number
+  urlIndex: number
+}
+
+const props = defineProps({
+  previewUrl: {
+    type: String,
+  },
+  className: {
+    type: String,
+  },
+  uploadUrl: {
+    type: String,
+  },
+  linkedId: {
+    type: String,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  // 不能超过多少M
+  limit: {
+    type: Number,
+    default: 1,
+  },
+  chunkUpload: {
+    type: Boolean,
+    default: false,
+  },
+  // 分片大小，单位KB。默认5M
+  chunkSize: {
+    type: Number,
+    default: 1024 * 1024 * 5,
+  },
+  data: {
+    type: Object,
+  },
+  // 允许上传的文件类型。注意是文件类型不是文件格式
+  accept: {
+    type: String as PropType<'image/*' | 'audio/*' | 'video/*' | 'image/*' | string>,
+    default: 'image/*',
+  },
+  uploadBefore: {
+    type: Function as PropType<(rawFile: UploadRawFile) => boolean | Promise<boolean>>,
+  },
+})
+
+const emit = defineEmits(['delete', 'done', 'error'])
+
+const axios = Axios.create({
+  timeout: 0,
+  headers: {
+    'Content-Type': 'application/octet-stream',
+  },
+})
+
+const loading = ref<boolean>(false)
+const progress = ref<number>(0)
+const progressText = ref<string>('点击方框上传文件')
+const uploadRef = ref<UploadInstance>()
+const attachmentChunk = ref<Array<SysAttachmentChunk>>([])
+const uploadWaitQueue: Array<WaitUpload> = []
+const uploadErrorQueue: Array<WaitUpload> = []
+const fileTotalSize = ref<number>(0)
+let attachmentId = 0
+
+const config: AxiosRequestConfig = {
+  timeout: 0,
+  headers: {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `Bearer ${getToken()}`,
+  },
+  onUploadProgress: (progressEvent) => {
+    const complete = ((progressEvent.loaded / progressEvent.total) * 100) | 0
+    progress.value = complete
+  },
+}
+
+const beforeUpload: UploadProps['beforeUpload'] = async (rawFile: UploadRawFile) => {
+  const fileSize = rawFile.size / 1024 / 1024
+  if (fileSize > props.limit) {
+    errorMessage(`上传文件不能超过 ${props.limit}M。当前文件: ${fileSize.toFixed(2)}M`)
+    return false
+  }
+
+  if (props.uploadBefore) {
+    const result = await props.uploadBefore(rawFile)
+    if (!result)
+      return false
+  }
+
+  fileTotalSize.value = rawFile.size
+
+  loading.value = true
+  progressText.value = '正在计算文件md5...'
+  md5(rawFile, props.chunkSize)
+    .then((fileMd5) => {
+      if (props.chunkUpload) {
+        const chunkList = _createFileChunk(rawFile)
+        // 分片上传
+        _createChunk(fileMd5, chunkList, rawFile)
+      }
+      else {
+        _uploadFileToServer(fileMd5, rawFile)
+      }
+    })
+    .catch(() => {
+      progressText.value = 'md5计算异常，请检查文件后重试.'
+    })
+  return false
+}
+
+// 创建分片上传
+function _createChunk(md5: string, chunkList: Array<File>, rawFile: UploadRawFile) {
+  const { size, name } = rawFile
+  progressText.value = '正在生成分片数据...'
+  fetchCreateChunk(
+    merge(props.data, {
+      bucketKey: 'part',
+      linkedId: props.linkedId,
+      fileName: name,
+      fileSize: size,
+      singleChunkSize: props.chunkSize,
+      fileMd5: md5,
+      chunkSize: chunkList.length,
+    }),
+  ).then((res) => {
+    attachmentId = res.id
+    if (res.state === 1 || res.state === 4) {
+      progressText.value = '上传成功'
+    }
+    else if (res.state === 3) {
+      // 上传完成合并
+      _mergeChunk()
+    }
+    else {
+      if (res.sysAttachmentChunkList.length === 0) {
+        // 尝试合并
+        _mergeChunk()
+      }
+      // 处理文件上传
+      _uploadStart(res.sysAttachmentChunkList, chunkList)
+    }
+  })
+}
+
+let totalWaitCount = 0
+function _uploadStart(urls: Array<SysAttachmentChunk>, chunkList: Array<File>) {
+  forEach(urls, (value, index) => {
+    if (value.chunkState !== 1) {
+      const chunk = chunkList[value.seqNo]
+      uploadWaitQueue.push({
+        file: chunk,
+        url: value.uploadUrl,
+        id: value.id,
+        chunkNum: value.seqNo,
+        urlIndex: index,
+      })
+      value.progress = 0
+      totalWaitCount++
+    }
+    else {
+      value.progress = 100
+    }
+  })
+  attachmentChunk.value = urls
+  _start()
+}
+
+function _start() {
+  progressText.value = '分片上传中'
+  for (let i = 0; i < 5; i++)
+    _next()
+}
+
+function _uploadChunkFile(chunkItem: WaitUpload) {
+  axios
+    .put(chunkItem.url, chunkItem.file, {
+      // 上传进度处理
+      onUploadProgress: (progressEvent) => {
+        const complete = ((progressEvent.loaded / progressEvent.total) * 100) | 0
+        const i = attachmentChunk.value.findIndex(c => c.id === chunkItem.id)
+        if (i > -1) {
+          const item = attachmentChunk.value[i]
+          if (item) {
+            item.progress = complete
+            if (complete === 100)
+              attachmentChunk.value.splice(i, 1)
+          }
+        }
+      },
+    })
+    .then((response) => {
+      if (response.status === 200) {
+        console.log(`分片：${chunkItem.chunkNum} 上传成功`)
+        // 继续上传下一个分片
+        _next(chunkItem.id)
+      }
+      else {
+        console.log(`上传失败：${response.status}，${response.statusText}`)
+        uploadErrorQueue.push(chunkItem)
+      }
+    })
+    .catch((error) => {
+      console.log(`分片：${chunkItem.chunkNum} 上传失败，${error}`)
+      // 添加到上传失败队列中
+      uploadErrorQueue.push(chunkItem)
+      const item = attachmentChunk.value[chunkItem.urlIndex]
+      if (item)
+        item.chunkState = 2
+      _next()
+    })
+}
+
+let flag = true
+function _next(id?: string) {
+  if (id) {
+    // 更新分片上传成功标识
+    fetchUpdateChunkStateSuccess(id).then((res) => {
+      if (res) {
+        if (--totalWaitCount <= 0 && flag) {
+          flag = false
+          _mergeChunk()
+        }
+      }
+    })
+  }
+  const waitUploadFile = uploadWaitQueue.shift()
+  if (waitUploadFile) {
+    forEach(attachmentChunk.value, (value) => {
+      if (value.id === waitUploadFile.id) {
+        value.chunkState = 4
+        return false
+      }
+    })
+    _uploadChunkFile(waitUploadFile)
+  }
+}
+
+// 合并分片，是否合并由后端去判断。只要队列中没有数据了就做一次合并的动作
+function _mergeChunk() {
+  progressText.value = '合并分片，请稍后...'
+  fetchMergeChunk(attachmentId)
+    .then((url) => {
+      if (url) {
+        emit('done', url)
+        progressText.value = '上传成功'
+      }
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+// 创建文件分片
+function _createFileChunk(file: UploadRawFile) {
+  progressText.value = '正在计算文件分片...'
+  const fileChunkList = []
+  let count = 0
+  const size = props.chunkSize
+  while (count < file.size) {
+    fileChunkList.push(file.slice(count, count + size))
+    count += size
+  }
+  return fileChunkList
+}
+
+// 上传重试
+function doRetry(id) {
+  const retryItems = uploadErrorQueue.filter(item => item.id === id)
+  if (retryItems && retryItems.length > 0) {
+    retryItems.forEach(item => uploadWaitQueue.push(item))
+    forEach(attachmentChunk.value, (item) => {
+      if (item.id === id) {
+        item.chunkState = 0
+        return false
+      }
+    })
+    _next()
+  }
+}
+
+// 不需要分片上传
+function _uploadFileToServer(md5: string, rawFile: UploadRawFile) {
+  const data = props.data || {}
+  progressText.value = 'md5计算完成，准备上传...'
+  data.md5 = md5
+  const params = new FormData()
+
+  forEach(data, (value, key) => {
+    params.append(key, value)
+  })
+  params.append('file', rawFile)
+
+  config.data = params
+
+  progressText.value = '上传中...'
+
+  request('post', props.uploadUrl, config)
+    .then((res) => {
+      if (res) {
+        progressText.value = '点击方框上传文件'
+        successMessage('上传成功')
+        emit('done', res)
+        progress.value = 0
+      }
+    })
+    .catch(() => {
+      emit('error')
+      errorMessage('上传失败')
+      progressText.value = '上传失败，请重试'
+      progress.value = 0
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+function deleteArrachment() {
+  emit('delete')
+}
+
+/**
+ *
+ * 计算文件md5
+ * @param file 文件
+ * @param chunkSize 分片大小
+ * @returns Promise
+ */
+function md5(file: File, chunkSize: number) {
+  return new Promise<string>((resolve, reject) => {
+    const blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice
+    const chunks = Math.ceil(file.size / chunkSize)
+    let currentChunk = 0
+    const spark = new SparkMD5.ArrayBuffer()
+    const fileReader = new FileReader()
+
+    fileReader.onload = function (e) {
+      spark.append(e.target.result)
+      currentChunk++
+      if (currentChunk < chunks) {
+        loadNext()
+      }
+      else {
+        const md5 = spark.end()
+        resolve(md5)
+      }
+    }
+
+    fileReader.onerror = function (e) {
+      reject(e)
+    }
+
+    function loadNext() {
+      const start = currentChunk * chunkSize
+      let end = start + chunkSize
+      if (end > file.size)
+        end = file.size
+
+      fileReader.readAsArrayBuffer(blobSlice.call(file, start, end))
+    }
+    loadNext()
+  })
+}
+</script>
+
+<template>
+  <div :class="className">
+    <div v-if="!isNotNull(previewUrl)" class="flex">
+      <div>
+        <el-upload
+          ref="uploadRef"
+          v-loading="loading"
+          :element-loading-text="progressText"
+          :disabled="disabled"
+          action=""
+          :accept="accept"
+          :show-file-list="false"
+          :before-upload="beforeUpload"
+        >
+          <el-icon class="avatar-uploader-icon">
+            <Plus />
+          </el-icon>
+        </el-upload>
+        <ElProgress v-if="!chunkUpload" class="mt-2" :percentage="progress" />
+        <p class="w-full text-center text-gray-400 text-size-12px mt-1">
+          {{ progressText }}
+        </p>
+      </div>
+      <div v-if="chunkUpload" class="ml-3 w-360px">
+        <el-table :data="attachmentChunk" table-layout="fixed" class="w-360px">
+          <el-table-column label="序号" width="60px" prop="seqNo" />
+          <el-table-column label="上传进度">
+            <template #default="{ row }">
+              <ElProgress
+                :percentage="row.progress"
+                status="success"
+                :stroke-width="14"
+                :text-inside="true"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="上传状态" width="100px">
+            <template #default="{ row }">
+              <el-tag v-if="row.chunkState === 2" size="small" type="danger">
+                上传失败
+              </el-tag>
+              <el-tag v-else-if="row.chunkState === 0" size="small" type="warning">
+                等待上传
+              </el-tag>
+              <el-tag v-else-if="row.chunkState === 4" size="small">
+                上传中
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100px">
+            <template #default="{ row }">
+              <el-button v-if="row.chunkState === 2" size="small" @click="doRetry(row.id)">
+                重试
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
+    <div v-else class="text-center">
+      <div class="w-260px text-center">
+        <slot>
+          <el-image
+            :src="previewUrl"
+            fit="cover"
+            class="w-full h-full"
+            :preview-src-list="[previewUrl]"
+          />
+        </slot>
+      </div>
+      <el-link type="danger" :disabled="disabled" :underline="false" @click="deleteArrachment()">
+        <el-icon class="mr-1">
+          <Delete />
+        </el-icon>删除后重新上传
+      </el-link>
+    </div>
+  </div>
+</template>
+
+<style lang="scss" scoped></style>
