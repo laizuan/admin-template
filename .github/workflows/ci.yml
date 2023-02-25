@@ -35,7 +35,8 @@ jobs:
       # 上传打包资源
       - name: Build the Docker image
         run: |
+          echo '${{ secrets.PASSWORD }}' >> ~/docker_password.txt
           docker version
-          docker login --username=${{ secrets.USERMAME }} registry.cn-shenzhen.aliyuncs.com --password=${{ secrets.PASSWORD }}
+          cat ~/docker_password.txt | docker login --username=${{ secrets.USERMAME }} registry.cn-shenzhen.aliyuncs.com --password-stdin
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
