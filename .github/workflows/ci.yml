@@ -36,6 +36,6 @@ jobs:
       - name: Build the Docker image
         run: |
           docker version
-          docker login https://registry.cn-shenzhen.aliyuncs.com -u ${{ secrets.USERMAME }} -p ${{ secrets.PASSWORD }}
+          docker login -u ${{ secrets.USERMAME }} -p ${{ secrets.PASSWORD }} https://registry.cn-shenzhen.aliyuncs.com
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
