@@ -24,20 +24,14 @@ jobs:
         with:
           version: 7.27.1
 
-      # 装依赖
       - name: Install dependencies 🔧
         run: pnpm i
 
-      # 打包
       - name: Build website 🤓
         run: pnpm build
 
-      - name: Get current version
-        id: version
-        uses: ashley-taylor/read-json-property-action@v1.0
-        with:
-          path: package.json
-          property: version
+      - name: Get Package Version
+        run: node -p -e '`PACKAGE_VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
 
       - name: Login Aliyun Container Registry
         uses: aliyun/acr-login@v1
@@ -47,9 +41,8 @@ jobs:
           username: "${{ secrets.USERNAME }}"
           password: "${{ secrets.PASSWORD }}"
 
-      # 上传打包资源
       - name: Build the Docker image
         run: |
           docker version
-          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:v${{steps.version.outputs.value}}
-          docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:v${{steps.version.outputs.value}}
+          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:$PACKAGE_VERSION
+          docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:$PACKAGE_VERSION
