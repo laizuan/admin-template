@@ -32,6 +32,12 @@ jobs:
       - name: Build website 🤓
         run: pnpm build
 
+      - name: Get current version
+        id: version
+        uses: ashley-taylor/read-json-property-action@v1.0
+        with:
+          path: package.json
+          property: version
 
       - name: Login Aliyun Container Registry
         uses: aliyun/acr-login@v1
@@ -45,5 +51,5 @@ jobs:
       - name: Build the Docker image
         run: |
           docker version
-          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
-          docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
+          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:v${{steps.version.outputs.value}}
+          docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:v${{steps.version.outputs.value}}
