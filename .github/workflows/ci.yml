@@ -36,7 +36,8 @@ jobs:
       - name: Build the Docker image
         run: |
           echo '${{ secrets.PASSWORD }}' >> ~/docker_password.txt
+          cat ~/docker_password.txt
           docker version
-          cat ~/docker_password.txt | docker login --username=${{ secrets.USERMAME }} registry.cn-shenzhen.aliyuncs.com --password-stdin
+          echo "${{ secrets.PASSWORD }}" | docker login registry.cn-shenzhen.aliyuncs.com --username ${{ secrets.USERMAME }} --password-stdin
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
