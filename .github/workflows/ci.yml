@@ -38,12 +38,12 @@ jobs:
         with:
           login-server: registry.cn-shenzhen.aliyuncs.com
           region-id: cn-shenzhen
-          username: "${{ secrets.USERMAME }}"
+          username: "${{ secrets.USERNAME }}"
           password: "${{ secrets.PASSWORD }}"
 
       # 上传打包资源
       - name: Build the Docker image
         run: |
           docker version
-          docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
+          docker build -t registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
