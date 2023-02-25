@@ -48,12 +48,12 @@ export const cdn = importToCDN({
     },
     {
       name: 'lodash',
-      var: 'lodash',
+      var: '_',
       path: 'https://cdn.bootcdn.net/ajax/libs/lodash.js/4.17.21/lodash.min.js',
     },
     {
       name: 'sortablejs',
-      var: 'sortablejs',
+      var: 'Sortable',
       path: 'https://cdn.bootcdn.net/ajax/libs/Sortable/1.15.0/Sortable.min.js',
     },
   ],
