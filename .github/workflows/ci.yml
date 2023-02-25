@@ -25,17 +25,25 @@ jobs:
           version: 7.27.1
 
       # 装依赖
-      # - name: Install dependencies 🔧
-      #   run: pnpm i
+      - name: Install dependencies 🔧
+        run: pnpm i
 
-      # # 打包
-      # - name: Build website 🤓
-      #   run: pnpm build
+      # 打包
+      - name: Build website 🤓
+        run: pnpm build
+
+
+      - name: LogintoAliyunContainerRegistry(ACR)
+        uses: aliyun/acr-login@v1
+        with:
+          login-server: registry.cn-shenzhen.aliyuncs.com
+          region-id: cn-shenzhen
+          username:"${{ secrets.USERMAME }}"
+          password:"${{ secrets.PASSWORD }}"
 
       # 上传打包资源
       - name: Build the Docker image
         run: |
           docker version
-          docker login --username ${{ secrets.USERMAME }} --password ${{ secrets.PASSWORD }} https://registry.cn-shenzhen.aliyuncs.com
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
