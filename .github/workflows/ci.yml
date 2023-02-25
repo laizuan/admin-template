@@ -36,6 +36,6 @@ jobs:
       - name: Build the Docker image
         run: |
           docker version
-          docker login --username=${{ secrets.USERMAME }} --password=${{ secrets.PASSWORD }} registry.cn-shenzhen.aliyuncs.com
+          docker login --username=${{ secrets.USERMAME }} registry.cn-shenzhen.aliyuncs.com --password=${{ secrets.PASSWORD }}
           docker build . --file ./Dockerfile --tag registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
           docker push registry.cn-shenzhen.aliyuncs.com/seedltd/upm-web:latest
